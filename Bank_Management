@@ -1,0 +1,223 @@
+from datetime import datetime
+import random
+
+class Account:
+    def __init__(self, account_id, name, balance, phone, account_type):
+        self.account_id = account_id
+        self.name = name
+        self.balance = balance
+        self.phone = phone
+        self.account_type = account_type
+        self.transaction_history = []
+        self.minimum_balance = 100 if account_type == 'savings' else 50
+        self.interest_rate = 0.05 if account_type == 'savings' else 0.0
+        self.statement = []
+
+    def deposit(self, amount):
+        if amount > 0:
+            self.balance += amount
+            self.transaction_history.append((datetime.now(), 'Deposit', amount))
+            self.statement.append((datetime.now(), 'Deposit', amount))
+            print(f"Deposited ${amount:.2f}. New balance is ${self.balance:.2f}.")
+        else:
+            print("Deposit amount must be positive.")
+
+    def withdraw(self, amount):
+        if 0 < amount <= self.balance - self.minimum_balance:
+            self.balance -= amount
+            self.transaction_history.append((datetime.now(), 'Withdrawal', amount))
+            self.statement.append((datetime.now(), 'Withdrawal', amount))
+            print(f"Withdrew ${amount:.2f}. New balance is ${self.balance:.2f}.")
+        else:
+            print("Insufficient funds or below minimum balance.")
+
+    def transfer(self, target_account, amount):
+        if 0 < amount <= self.balance - self.minimum_balance:
+            self.balance -= amount
+            target_account.deposit(amount)
+            self.transaction_history.append((datetime.now(), 'Transfer', amount))
+            self.statement.append((datetime.now(), 'Transfer', amount))
+            print(f"Transferred ${amount:.2f} to Account ID {target_account.account_id}.")
+        else:
+            print("Insufficient funds or below minimum balance.")
+
+    def calculate_interest(self):
+        if self.account_type == 'savings':
+            interest = self.balance * self.interest_rate / 12  # Monthly interest
+            self.deposit(interest)
+            print(f"Interest applied: ${interest:.2f}. New balance: ${self.balance:.2f}.")
+
+    def get_balance(self):
+        return self.balance
+
+    def get_transaction_history(self):
+        return self.transaction_history
+
+    def generate_statement(self):
+        print(f"\nMonthly Statement for Account ID: {self.account_id}")
+        for entry in self.statement:
+            date, trans_type, amount = entry
+            print(f"{date.strftime('%Y-%m-%d %H:%M:%S')} - {trans_type}: ${amount:.2f}")
+        print(f"Ending Balance: ${self.balance:.2f}")
+
+    def __str__(self):
+        return f"Account ID: {self.account_id}, Name: {self.name}, Phone: {self.phone}, Account Type: {self.account_type.capitalize()}, Balance: ${self.balance:.2f}"
+
+
+class Bank:
+    def __init__(self):
+        self.accounts = {}
+        self.next_account_id = 1
+
+    def create_account(self, name, initial_balance, phone, account_type):
+        if account_type not in ['savings', 'checking']:
+            print("Invalid account type. Choose 'savings' or 'checking'.")
+            return
+        account_id = self.next_account_id
+        self.next_account_id += 1
+        new_account = Account(account_id, name, initial_balance, phone, account_type)
+        self.accounts[account_id] = new_account
+        print(f"Account created successfully! {new_account}")
+
+    def deposit(self, account_id, amount):
+        account = self.accounts.get(account_id)
+        if account:
+            account.deposit(amount)
+        else:
+            print("Account not found.")
+
+    def withdraw(self, account_id, amount):
+        account = self.accounts.get(account_id)
+        if account:
+            account.withdraw(amount)
+        else:
+            print("Account not found.")
+
+    def transfer(self, source_id, target_id, amount):
+        source_account = self.accounts.get(source_id)
+        target_account = self.accounts.get(target_id)
+        if source_account and target_account:
+            source_account.transfer(target_account, amount)
+        else:
+            print("One or both accounts not found.")
+
+    def view_balance(self, account_id):
+        account = self.accounts.get(account_id)
+        if account:
+            print(f"Account balance: ${account.get_balance():.2f}")
+        else:
+            print("Account not found.")
+
+    def view_transactions(self, account_id):
+        account = self.accounts.get(account_id)
+        if account:
+            transactions = account.get_transaction_history()
+            if transactions:
+                for transaction in transactions:
+                    timestamp, trans_type, amount = transaction
+                    print(f"{timestamp} - {trans_type}: ${amount:.2f}")
+            else:
+                print("No transactions found.")
+        else:
+            print("Account not found.")
+
+    def generate_monthly_statements(self):
+        for account in self.accounts.values():
+            account.calculate_interest()
+            account.generate_statement()
+
+    def delete_account(self, account_id):
+        if account_id in self.accounts:
+            del self.accounts[account_id]
+            print(f"Account ID {account_id} deleted successfully.")
+        else:
+            print("Account not found.")
+
+    def view_accounts(self):
+        if self.accounts:
+            for account in self.accounts.values():
+                print(account)
+        else:
+            print("No accounts available.")
+
+    def search_account(self, search_term):
+        found = False
+        for account in self.accounts.values():
+            if search_term in (account.name, str(account.account_id)):
+                print(account)
+                found = True
+        if not found:
+            print("No accounts found with that search term.")
+
+
+def main():
+    bank = Bank()
+    
+    while True:
+        print("\n1. Create Account")
+        print("2. Deposit")
+        print("3. Withdraw")
+        print("4. Transfer")
+        print("5. View Balance")
+        print("6. View Transactions")
+        print("7. Generate Monthly Statements")
+        print("8. Delete Account")
+        print("9. View All Accounts")
+        print("10. Search Account")
+        print("11. Exit")
+        
+        choice = input("Enter choice: ")
+        
+        if choice == '1':
+            name = input("Enter account holder's name: ")
+            initial_balance = float(input("Enter initial balance: "))
+            phone = input("Enter phone number: ")
+            account_type = input("Enter account type (savings/checking): ").lower()
+            bank.create_account(name, initial_balance, phone, account_type)
+        
+        elif choice == '2':
+            account_id = int(input("Enter account ID: "))
+            amount = float(input("Enter amount to deposit: "))
+            bank.deposit(account_id, amount)
+        
+        elif choice == '3':
+            account_id = int(input("Enter account ID: "))
+            amount = float(input("Enter amount to withdraw: "))
+            bank.withdraw(account_id, amount)
+        
+        elif choice == '4':
+            source_id = int(input("Enter source account ID: "))
+            target_id = int(input("Enter target account ID: "))
+            amount = float(input("Enter amount to transfer: "))
+            bank.transfer(source_id, target_id, amount)
+        
+        elif choice == '5':
+            account_id = int(input("Enter account ID: "))
+            bank.view_balance(account_id)
+        
+        elif choice == '6':
+            account_id = int(input("Enter account ID: "))
+            bank.view_transactions(account_id)
+        
+        elif choice == '7':
+            bank.generate_monthly_statements()
+        
+        elif choice == '8':
+            account_id = int(input("Enter account ID: "))
+            bank.delete_account(account_id)
+        
+        elif choice == '9':
+            bank.view_accounts()
+        
+        elif choice == '10':
+            search_term = input("Enter account holder's name or ID to search: ")
+            bank.search_account(search_term)
+        
+        elif choice == '11':
+            break
+        
+        else:
+            print("Invalid choice! Please try again.")
+
+if __name__ == "__main__":
+    main()
